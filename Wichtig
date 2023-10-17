@@ -17,7 +17,6 @@ housing["income_cat"].hist()
 
 command befehl für combine_A_B.py
 
-python datasets/combine_A_and_B.py --fold_A ./datasets/data/mars/A/train --fold_B ./datasets/data/mars/B/train --fold_AB ./dat
-asets/data/mars/train
+python combine_A_and_B.py --fold_A /Users/deniztekin/Documents/Programme/Masterarbeit/images/A/train --fold_B /Users/deniztekin/Documents/Programme/Masterarbeit/images/B/train --fold_AB /Users/deniztekin/Documents/Programme/Masterarbeit/images/AB
 
 ##################################################
