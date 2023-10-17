@@ -14,3 +14,10 @@ to visualize:
      
 housing["income_cat"].hist()     
 ##################################################
+
+command befehl für combine_A_B.py
+
+python datasets/combine_A_and_B.py --fold_A ./datasets/data/mars/A/train --fold_B ./datasets/data/mars/B/train --fold_AB ./dat
+asets/data/mars/train
+
+##################################################
