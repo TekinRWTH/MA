@@ -20,3 +20,10 @@ command befehl für combine_A_B.py
 python combine_A_B.py --fold_A /Users/deniztekin/Documents/Programme/Masterarbeit/images/A/train --fold_B /Users/deniztekin/Documents/Programme/Masterarbeit/images/B/train --fold_AB /Users/deniztekin/Documents/Programme/Masterarbeit/images/AB
 
 ##################################################
+
+
+in ordner dokumente nach namen sortieren:
+
+i=1; for file in *; do mv "$file" "$i.${file##*.}"; i=$((i+1)); done
+
+############################################
