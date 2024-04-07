@@ -27,3 +27,10 @@ in ordner dokumente nach namen sortieren:
 i=1; for file in *; do mv "$file" "$i.${file##*.}"; i=$((i+1)); done
 
 ############################################
+
+conda activate generative2
+conda install ipykernel
+
+python -m ipykernel install --user --name generative2 --display-name
+
+
