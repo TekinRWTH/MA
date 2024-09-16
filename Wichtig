@@ -35,3 +35,14 @@ python -m ipykernel install --user --name generative2 --display-name
 
 source ~/.bashrc
 
+###############################
+
+deleting folder in JupyterLab
+
+
+
+rm -rf /path/to/folder
+
+
+###############################
+
