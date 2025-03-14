@@ -9,16 +9,15 @@ from torchvision.utils import save_image
 def save_some_examples(gen, val_loader, epoch, folder):
     gen.eval()
     with torch.no_grad():
-        for batch_idx, (x, y) in enumerate(val_loader):  # <-- Changed: Added a loop to iterate over all batches
+        for batch_idx, (x, y) in enumerate(val_loader):  
             x, y = x.to(config.DEVICE), y.to(config.DEVICE)
             y_fake = gen(x)
             y_fake = y_fake * 0.5 + 0.5  # remove normalization
-            save_image(y_fake, folder + f"/y_gen_{epoch}_batch_{batch_idx}.tiff")  # <-- Changed: Added batch index to file name
+            save_image(y_fake, folder + f"/y_gen_{epoch}_batch_{batch_idx}.tiff")  
             if epoch <= 1:
-                save_image(x * 0.5 + 0.5, folder + f"/input_{epoch}_batch_{batch_idx}.tiff")  # <-- Changed: Added batch index to file name
+                save_image(x * 0.5 + 0.5, folder + f"/input_{epoch}_batch_{batch_idx}.tiff")  
             if epoch == 1:
-                save_image(y * 0.5 + 0.5, folder + f"/label_{epoch}_batch_{batch_idx}.tiff")  # <-- Changed: Added batch index to file name        
-            
+                save_image(y * 0.5 + 0.5, folder + f"/label_{epoch}_batch_{batch_idx}.tiff")  
             
     gen.train()
 
