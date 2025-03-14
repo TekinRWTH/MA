@@ -14,13 +14,15 @@ import os
 
 torch.backends.cudnn.benchmark = True
 
+
 def inference_fn(gen, disc, bce, D_real_losses, D_fake_losses, G_losses, l1_loss, loader):
     loop = tqdm(loader, leave=True)
 
     for idx, (x, y) in enumerate(loop):  
         x = x.to(configinference.DEVICE)
-        y = y.to(configinference.DEVICE)
+        y = y.to(configinference.DEVICE)  # Move labels to device if necessary
 
+        
         with torch.no_grad():
             y_fake = gen(x)
             D_real = disc(x, y)
@@ -46,15 +48,22 @@ def inference_fn(gen, disc, bce, D_real_losses, D_fake_losses, G_losses, l1_loss
                 D_fake=torch.sigmoid(D_fake).mean().item(),
             )
 
+        #BEI BILD SPEICHERN NICHT VERGESSEN#
+        #save_image(y_fake, f"/home/dt681254/jupyterlab/CGAN/inference/image_{idx}_fake.png")
+        #BEI BILD SPEICHERN NICHT VERGESSEN#
+        #save_image(y, f"/home/dt681254/jupyterlab/CGAN/inference/image_{idx}_label.png")
+
+    
     df = pd.DataFrame({
         "D_real_loss": D_real_losses,
         "D_fake_loss": D_fake_losses,
         "G_loss": G_losses,
     })
     output_dir = "/home/dt681254/jupyterlab/CGAN"
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
     df.to_csv(os.path.join(output_dir, "lossestest.csv"), index=False)
     print(f"Saved losses to {os.path.join(output_dir, 'lossestest.csv')}")
+
 
 def main():
     disc = Discriminator(in_channels=3).to(configinference.DEVICE)
@@ -62,10 +71,14 @@ def main():
     BCE = nn.BCEWithLogitsLoss()
     L1_LOSS = nn.L1Loss()
 
+    #D_real_losses = []
+    #D_fake_losses = []
+    #G_losses = []
+
     if configinference.LOAD_MODEL:
         load_checkpoint(configinference.CHECKPOINT_GEN, gen, None, configinference.LEARNING_RATE)
 
-    gen.eval()
+    gen.eval()  # Set generator to evaluation mode
 
     val_dataset = MapDataset(root_dir=configinference.VAL_DIR)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
@@ -76,9 +89,14 @@ def main():
         D_fake_losses = []
         G_losses = []
 
+        
         inference_fn(gen, disc, BCE, D_real_losses, D_fake_losses, G_losses, L1_LOSS, val_loader)
     
         save_some_examples(gen, val_loader, epoch, folder="/home/dt681254/jupyterlab/CGAN/inference")
 
 if __name__ == "__main__":
     main()
+    
+    
+    
+    
