@@ -1,3 +1,5 @@
+#Hier wird noch zusätzlich GPU-Auslastung gemessen#
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
