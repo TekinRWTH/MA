@@ -1,0 +1,118 @@
+import os
+import glob
+import csv
+import numpy as np
+import torch
+import torch.nn as nn
+import torchvision.transforms as transforms
+from PIL import Image
+from tqdm import tqdm
+from scipy.linalg import sqrtm
+from torchvision.models import inception_v3, Inception_V3_Weights
+
+def calculate_frechet_distance(mu1, sigma1, mu2, sigma2):
+    """Original FID calculation (unchanged)"""
+    mu1_np = mu1.cpu().numpy()
+    mu2_np = mu2.cpu().numpy()
+    sigma1_np = sigma1.cpu().numpy()
+    sigma2_np = sigma2.cpu().numpy()
+
+    diff = mu1_np - mu2_np
+    diff_sq = diff.dot(diff)
+    cov_prod = sigma1_np.dot(sigma2_np)
+    
+    covmean, info = sqrtm(cov_prod, disp=False)
+    if info != 0 or np.iscomplexobj(covmean):
+        covmean = np.eye(sigma1_np.shape[0]) * 1e-6
+    covmean = covmean.real if np.iscomplexobj(covmean) else covmean
+    
+    tr_covmean = np.trace(covmean)
+    return float(diff_sq + np.trace(sigma1_np) + np.trace(sigma2_np) - 2 * tr_covmean)
+
+def get_activations(model, paths, transform, device, batch_size=32, desc=None):
+    """Feature extraction with progress tracking"""
+    model.eval()
+    activations = []
+    with tqdm(total=len(paths), desc=desc, unit='img', leave=False) as pbar:
+        for i in range(0, len(paths), batch_size):
+            batch = [transform(Image.open(p).convert('RGB')) for p in paths[i:i+batch_size]]
+            batch = torch.stack(batch).to(device)
+            with torch.no_grad():
+                activations.append(model(batch).cpu().numpy())
+            pbar.update(len(batch))
+    return np.concatenate(activations)
+
+def calculate_fid_for_all():
+    """Main execution function"""
+    BASE_DIR = "/Users/deniztekin/Documents/Uni/Masterarbeit/inference/inferenz"
+    batches = ["Batch1", "Batch8", "Batch16"]
+    steps = list(range(50, 1001, 50))
+    batch_numbers = list(range(137))  # 0-136 inclusive
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Load Inception model
+    model = inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
+    model.fc = nn.Identity()
+    model.aux_logits = False
+    model = model.eval().to(device)
+    
+    # Image preprocessing
+    transform = transforms.Compose([
+        transforms.Resize((299, 299)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+    total = len(batches) * len(steps)
+    with tqdm(total=total, desc="Overall Progress") as main_pbar:
+        for batch in batches:
+            for step in steps:
+                # Build paths according to your structure
+                step_dir = os.path.join(BASE_DIR, batch, str(step))
+                inference_dir = os.path.join(step_dir, "inference")
+                gen_dir = os.path.join(inference_dir, "y_gen")
+                label_dir = os.path.join(inference_dir, "label")
+                csv_path = os.path.join(step_dir, "fid.csv")  # CSV in step directory
+                
+                # Verify directory structure
+                if not os.path.exists(inference_dir):
+                    main_pbar.update(1)
+                    continue
+                
+                # Collect image paths
+                real_images = []
+                gen_images = []
+                for bn in batch_numbers:
+                    real_path = os.path.join(label_dir, f"label_0_batch_{bn}.tiff")
+                    gen_path = os.path.join(gen_dir, f"y_gen_0_batch_{bn}.tiff")
+                    if os.path.exists(real_path): real_images.append(real_path)
+                    if os.path.exists(gen_path): gen_images.append(gen_path)
+                
+                # Skip if no images found
+                if not real_images or not gen_images:
+                    main_pbar.update(1)
+                    continue
+                
+                # Compute statistics
+                mu_real, sigma_real = compute_stats(model, real_images, transform, device, f"Real {batch}-{step}")
+                mu_gen, sigma_gen = compute_stats(model, gen_images, transform, device, f"Generated {batch}-{step}")
+                
+                # Calculate FID
+                fid = calculate_frechet_distance(mu_gen, sigma_gen, mu_real, sigma_real)
+                
+                # Save results
+                with open(csv_path, 'w', newline='') as f:
+                    csv.writer(f).writerows([["batch", "step", "FID"], [batch, step, fid]])
+                
+                main_pbar.update(1)
+                main_pbar.set_postfix_str(f"Latest: {batch}-{step} FID={fid:.2f}")
+
+def compute_stats(model, paths, transform, device, desc):
+    """Helper function for statistics"""
+    if not paths: return None, None
+    act = get_activations(model, paths, transform, device, desc=desc)
+    return torch.tensor(np.mean(act, 0)), torch.tensor(np.cov(act, rowvar=False))
+
+# Execute in Jupyter Notebook
+calculate_fid_for_all()
