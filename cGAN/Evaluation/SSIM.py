@@ -9,9 +9,9 @@ def structural_sim(img1, img2):
   sim, diff = structural_similarity(img1, img2, full=True)
   return sim
 
-y_gen_folder = '/Users/deniztekin/Documents/Uni/Masterarbeit/y_gen'
+y_gen_folder = '/Users/deniztekin/Documents/Uni/Masterarbeit/inference/inferenz/Batch1/50/inference/y_gen'
 
-label_folder = '/Users/deniztekin/Documents/Uni/Masterarbeit/label'
+label_folder = 'Users/deniztekin/Documents/Uni/Masterarbeit/inference/inferenz/Batch1/50/inference/label'
 
 def get_label_file(y_gen_file):
     # Extract the epoch and batch from the y_gen file name
@@ -58,7 +58,7 @@ for y_gen_file in y_gen_files:
 results = [(int(epoch), int(batch), similarity) for epoch, batch, similarity in results]
 results.sort(key=lambda x: (x[0], x[1]))
 
-csv_file_path = 'ssim_similarity_scores.csv'
+csv_file_path = 'Users/deniztekin/Documents/Uni/Masterarbeit/inference/inferenz/Batch1/50/ssim_similarity_scores.csv'
 with open(csv_file_path, mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(["Epoch", "Batch", "SSIM_Similarity"])  # Write header
