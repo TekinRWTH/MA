@@ -1,0 +1,88 @@
+import os
+import re
+import glob
+import csv
+import torch
+import torch.nn as nn
+from PIL import Image
+from torchvision import models, transforms
+from tqdm import tqdm
+
+# --- Device setup ---
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# --- Inception v3 setup ---
+weights = models.Inception_V3_Weights.DEFAULT
+inception = models.inception_v3(weights=weights)
+inception.aux_logits = False
+inception.AuxLogits = nn.Identity()
+inception.fc = nn.Identity()
+inception.to(device)
+inception.eval()
+
+# --- Image transformations ---
+transform = transforms.Compose([
+    transforms.Resize((299, 299)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    ),
+])
+
+def extract_features(img_path, model, transform):
+    image = Image.open(img_path).convert("RGB")
+    tensor = transform(image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        features = model(tensor)
+    return features.squeeze(0)
+
+# --- Configuration ---
+base_path = "/Users/deniztekin/Documents/Uni/Masterarbeit/inference/inferenz"
+batches = ["Batch16"]
+pattern = r'y_gen_0_batch_(\d+)_(\d+)\.tiff'  # Captures: orig_batch, split_idx
+
+# --- Processing loop ---
+for batch in batches:
+    for step in range(50, 1001, 50):
+        step_dir = os.path.join(base_path, batch, str(step))
+        y_gen_folder = os.path.join(step_dir, "inference", "y_gennew")
+        label_folder = os.path.join(step_dir, "inference", "labelnew")
+        csv_path = os.path.join(step_dir, "distances.csv")
+
+        # Create directory if missing
+        os.makedirs(step_dir, exist_ok=True)
+
+        if not os.path.exists(y_gen_folder) or not os.path.exists(label_folder):
+            print(f"Skipping {batch}/{step} (missing folders)")
+            continue
+
+        results = []
+        all_gen_images = glob.glob(os.path.join(y_gen_folder, "y_gen_*.tiff"))
+        print(f"Found {len(all_gen_images)} images in {y_gen_folder}")
+
+        for gen_img in tqdm(all_gen_images, desc=f"Processing {batch}/{step}"):
+            filename = os.path.basename(gen_img)
+            match = re.match(pattern, filename)
+            
+            if match:
+                orig_batch, split_idx = match.groups()
+                label_file = os.path.join(label_folder, f"label_0_batch_{orig_batch}_{split_idx}.tiff")
+                
+                if os.path.exists(label_file):
+                    gen_features = extract_features(gen_img, inception, transform)
+                    label_features = extract_features(label_file, inception, transform)
+                    squared_distance = torch.sum((gen_features - label_features) ** 2).item()
+                    results.append([orig_batch, step, split_idx, squared_distance])
+                else:
+                    print(f"Missing label: {label_file}")
+
+        if results:
+            with open(csv_path, 'w', newline='') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(["original_batch", "step", "split_index", "distance"])
+                writer.writerows(results)
+            print(f"Saved distances to {csv_path}")
+        else:
+            print(f"No results for {batch}/{step}")
